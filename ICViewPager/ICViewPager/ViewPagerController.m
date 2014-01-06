@@ -21,6 +21,7 @@
 #define kCenterCurrentTab 0.0
 #define kFixFormerTabsPositions 0.0
 #define kFixLatterTabsPositions 0.0
+#define kViewPagerOptionNoTabs 1.0
 
 #define kIndicatorColor [UIColor colorWithRed:178.0/255.0 green:203.0/255.0 blue:57.0/255.0 alpha:0.75]
 #define kTabsViewBackgroundColor [UIColor colorWithRed:234.0/255.0 green:234.0/255.0 blue:234.0/255.0 alpha:0.75]
@@ -135,6 +136,8 @@
 @property (nonatomic) NSNumber *centerCurrentTab;
 @property (nonatomic) NSNumber *fixFormerTabsPositions;
 @property (nonatomic) NSNumber *fixLatterTabsPositions;
+@property (nonatomic) NSNumber *dontShowTabs;
+
 
 @property (nonatomic) NSUInteger tabCount;
 @property (nonatomic) NSUInteger activeTabIndex;
@@ -160,6 +163,7 @@
 @synthesize centerCurrentTab = _centerCurrentTab;
 @synthesize fixFormerTabsPositions = _fixFormerTabsPositions;
 @synthesize fixLatterTabsPositions = _fixLatterTabsPositions;
+@synthesize dontShowTabs = _dontShowTabs;
 
 #pragma mark - Init
 - (id)initWithCoder:(NSCoder *)aDecoder {
@@ -311,6 +315,7 @@
     _fixLatterTabsPositions = fixLatterTabsPositions;
 }
 
+
 - (void)setActiveTabIndex:(NSUInteger)activeTabIndex {
     
     TabView *activeTabView;
@@ -428,6 +433,18 @@
 }
 
 #pragma mark - Getters
+
+- (NSNumber *)dontShowTabs {
+    
+    if (!_dontShowTabs) {
+        CGFloat value = kTabHeight;
+        if ([self.delegate respondsToSelector:@selector(viewPager:valueForOption:withDefault:)])
+            value = [self.delegate viewPager:self valueForOption:ViewPagerOptionNoTabs withDefault:value];
+        self.dontShowTabs = [NSNumber numberWithFloat:value];
+    }
+    return _dontShowTabs;
+}
+
 - (NSNumber *)tabHeight {
     
     if (!_tabHeight) {
@@ -595,6 +612,7 @@
     self.centerCurrentTab = [NSNumber numberWithFloat:[self.delegate viewPager:self valueForOption:ViewPagerOptionCenterCurrentTab withDefault:kCenterCurrentTab]];
     self.fixFormerTabsPositions = [NSNumber numberWithFloat:[self.delegate viewPager:self valueForOption:ViewPagerOptionFixFormerTabsPositions withDefault:kFixFormerTabsPositions]];
     self.fixLatterTabsPositions = [NSNumber numberWithFloat:[self.delegate viewPager:self valueForOption:ViewPagerOptionFixLatterTabsPositions withDefault:kFixLatterTabsPositions]];
+    self.dontShowTabs = [NSNumber numberWithFloat:[self.delegate viewPager:self valueForOption:ViewPagerOptionNoTabs withDefault:kViewPagerOptionNoTabs]];
     
     // We should update contentSize property of our tabsView, so we should recalculate it with the new values
     CGFloat contentSizeWidth = 0;
@@ -735,7 +753,7 @@
                                                               navigationOrientation:UIPageViewControllerNavigationOrientationHorizontal
                                                                             options:nil];
     [self addChildViewController:self.pageViewController];
-
+    
     // Setup some forwarding events to hijack the scrollView
     // Keep a reference to the actual delegate
     self.actualDelegate = ((UIScrollView *)[self.pageViewController.view.subviews objectAtIndex:0]).delegate;
@@ -776,7 +794,7 @@
     // Add tabsView
     self.tabsView = (UIScrollView *)[self.view viewWithTag:kTabViewTag];
     
-    if (!self.tabsView) {
+    if (!self.tabsView && self.dontShowTabs==0) {
         
         self.tabsView = [[UIScrollView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.frame), [self.tabHeight floatValue])];
         self.tabsView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -786,7 +804,9 @@
         self.tabsView.showsVerticalScrollIndicator = NO;
         self.tabsView.tag = kTabViewTag;
         
+        
         [self.view insertSubview:self.tabsView atIndex:0];
+        
     }
     
     // Add tab views to _tabsView
@@ -863,7 +883,7 @@
     }
     
     if ([[self.tabs objectAtIndex:index] isEqual:[NSNull null]]) {
-
+        
         // Get view from dataSource
         UIView *tabViewContent = [self.dataSource viewPager:self viewForTabAtIndex:index];
         tabViewContent.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
